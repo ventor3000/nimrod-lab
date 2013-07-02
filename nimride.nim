@@ -14,6 +14,8 @@ var noname_counter=1 #used to create indexed NONMAEx.nim name for new drawings
 
 
 
+
+
 proc newToolButton(title,cmdname:string,image:string=nil):PIHandle=
   var btn=button("",cmdname)
   if image!=nil:
