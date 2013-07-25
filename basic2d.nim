@@ -1,8 +1,17 @@
+#
+#
+#            Nimrod's Runtime Library
+#        (c) Copyright 2013 Robert Persson
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import math
 import strutils
 
 
-## Basic 2d support with vectors, points,matrices and some basic utilities.
+## Basic 2d support with vectors, points, matrices and some basic utilities.
 ## Vectors are implemented as direction vectors, ie. when transformed with a matrix
 ## the translation part of matrix is ignored. 
 ##
@@ -51,12 +60,12 @@ const
     ## used internally by DegToRad and RadToDeg
 
 type
-    TMatrix2d* = object {.pure,final.}
+    TMatrix2d* = object
       ## Implements a row major 2d matrix, which means
       ## transformations are applied the order they are concatenated.
       ## The rightmost column of the 3x3 matrix is left out since normally
       ## not used for geometric transformations in 2d.
-      ax*,ay*,bx*,by*,tx*,ty*:float #do not change order of thoose, addr of ax is used elsewhere!
+      ax*,ay*,bx*,by*,tx*,ty*:float
     TPoint2d* = object
       ## Implements a non-homegeneous 2d point stored as 
       ## an `x` coordinate and an `y` coordinate.
@@ -80,10 +89,6 @@ proc vector2d*(x,y:float):TVector2d {.noInit,inline.}
   ## Returns a new vector (`x`,`y`)
 proc point2d*(x,y:float):TPoint2d {.noInit,inline.}
   ## Returns a new point (`x`,`y`)
-#proc tryNormalize*(v:var TVector2d):bool {.discardable.}
-#  ## Modifies v to have a length of 1.0 keeping its angle.
-#  ## If `v` has zero length (and thus no angle), it is left unmodified and false is
-#  ## returned, otherwise true is returned.
 
 
 
@@ -138,12 +143,7 @@ proc setElements*(t:var TMatrix2d,ax,ay,bx,by,tx,ty:float) {.inline.}=
   t.ty=ty
 
 proc matrix2d*(ax,ay,bx,by,tx,ty:float):TMatrix2d =
-  result.ax=ax
-  result.ay=ay
-  result.bx=bx
-  result.by=by
-  result.tx=tx
-  result.ty=ty
+  result.setElements(ax,ay,bx,by,tx,ty)
 
 proc `&`*(a,b:TMatrix2d):TMatrix2d {.noInit.} = #concatenate matrices
   ## Concatenates matrices returning a new matrix.
@@ -191,8 +191,8 @@ proc rotate*(rad:float):TMatrix2d {.noInit.} =
   ## Returns a new rotation matrix, which
   ## represents a rotation by `rad` radians
   let 
-      s=sin(rad)
-      c=cos(rad)
+    s=sin(rad)
+    c=cos(rad)
   result.setElements(c,s,-s,c,0,0)
 
 proc rotate*(rad:float,org:TPoint2d):TMatrix2d {.noInit.} =
@@ -428,7 +428,7 @@ proc normalize*(v:var TVector2d) {.inline.}=
   if not tryNormalize(v):
     raise newException(EDivByZero,"Cannot normalize zero length vector")
   
-proc xformNorm*(v:var TVector2d,t:TMatrix2d)=
+proc transformNorm*(v:var TVector2d,t:TMatrix2d)=
   ## Applies transformation `m` onto `v` in place, assuming `v` is a normal.
   ## The length of the resulting vector is undefined, 
   ## but most likely not the same as the input vector.
@@ -448,7 +448,7 @@ proc xformNorm*(v:var TVector2d,t:TMatrix2d)=
   v.y = (t.ax*v.y-t.bx*v.x)/d
   v.x = newx
 
-proc xformInv*(v:var TVector2d,t:TMatrix2d)=
+proc transformInv*(v:var TVector2d,t:TMatrix2d)=
   ## Applies inverse of a transformation `m` to `v` in place.
   ## This is faster than creating an inverse matrix and apply() it.
   ## Transforming a vector ignores the translational part
@@ -463,10 +463,10 @@ proc xformInv*(v:var TVector2d,t:TMatrix2d)=
   v.y = (t.ax*v.y-t.ay*v.x)/d
   v.x = newx
 
-proc xformNormInv*(v:var TVector2d,t:TMatrix2d)=
+proc transformNormInv*(v:var TVector2d,t:TMatrix2d)=
   ## Applies inverse of a transformation `m` to `v` in place, 
   ## assuming `v` is a normal. This is faster than creating an inverse 
-  ## matrix and xformNorm(...) it. Transforming a vector ignores the 
+  ## matrix and transformNorm(...) it. Transforming a vector ignores the 
   ## translational part of the matrix.
   
   # normal inverse transform is done by transforming
@@ -653,7 +653,7 @@ proc `&=` *(p:var TPoint2d,t:TMatrix2d) {.inline.}=
   p.x=newx
 
 
-proc xformInv*(p:var TPoint2d,t:TMatrix2d){.inline.}=
+proc transformInv*(p:var TPoint2d,t:TMatrix2d){.inline.}=
   ## Applies the inverse of transformation `t` onto `p` in place.
   ## If the matrix is not invertable (determinant=0) , EDivByZero will
   ## be raised.
@@ -763,7 +763,7 @@ proc move*(p:var TPoint2d,v:TVector2d){.inline.}=
 # ***************************************
 #     Misc. 2d utilities
 # ***************************************
-proc xform*(x,y:var float,m:TMatrix2d,translate=false)=
+proc transform*(x,y:var float,m:TMatrix2d,translate=false)=
   ## Concatenates vector x,y with matrix m in place, optionally
   ## using the translation part of the matrix.
   if translate: # positional style transform
@@ -848,28 +848,3 @@ proc bisect*(v1,v2:TVector2d):tuple[vec:TVector2d,success:bool]=
     # one of them (x1,y1 rotated 90 degrees).
     result.vec=vector2d(y1,-x1)
   
-
-when isMainModule:
- 
- 
-  var v1=vector2d(0,0.000000000000000000000000000)
-  var v2=vector2d(10,20)
-  
-  
-  
-  try:
-    v1.Normalize
-  except:
-    echo "Exception!"
- 
-   
-  
-  echo v1
-  
-  echo v1.len
-  
-  
-  
-  
-  
-  discard readline(stdin)
