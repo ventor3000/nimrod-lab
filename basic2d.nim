@@ -114,7 +114,7 @@ proc safeArccos(v:float):float=
   ## assumes v is in range 0.0-1.0, but clamps
   ## the value to avoid out of domain errors
   ## due to rounding issues
-  return arccos(clamp(v,0.0,1.0))
+  return arccos(clamp(v,-1.0,1.0))
 
 
 template makeBinOpVector*(s:expr)= 
@@ -344,6 +344,8 @@ proc len*(v:TVector2d):float {.inline.}=
   
 proc `len=`*(v:var TVector2d,newlen:float) {.noInit.} =
   ## Sets the length of the vector, keeping its angle.
+  ## If the vector has zero length before chenging it's length,
+  ## an arbitrary vector of the requested length is returned.
   let fac=newlen/v.len
   
   if newlen==0.0:
