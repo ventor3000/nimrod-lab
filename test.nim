@@ -1,21 +1,25 @@
 import basic3d
 import basic2d
 import math
+import strutils
 
-var
-  v1=vector3d(5,7,0)
-  p1=point3d(5,7,0)
-  m= rotateZ(DEG90) & move(100,200,300)
- 
 
-v1&=m
-p1=p1&m
+var 
+  a=point3d(10,10,0)
+  b=point3d(20,25,0)
+  c=point3d(30,21,0)
+  
+  aa=point2d(10,10)
+  bb=point2d(20,25)
+  cc=point2d(30,21)
   
   
+echo formatFloat(area(a,b,c))
+echo formatFloat(area(aa,bb,cc))
 
-
-echo v1
-echo p1
+  
+  
+echo anyperp(vector3d(1,1,1))
 
 
 discard readline(stdin)

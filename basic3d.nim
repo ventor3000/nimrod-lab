@@ -9,10 +9,38 @@
 
 import math
 import strutils
-import times
+
+
+## Basic 3d support with vectors, points, matrices and some basic utilities.
+## Vectors are implemented as direction vectors, ie. when transformed with a matrix
+## the translation part of matrix is ignored. The coordinate system used is
+## right handed, because its compatible with 2d coordinate system (rotation around
+## zaxis equals 2d rotation)
+##
+##
+## Quick start example:
+##   
+##   # Create a matrix wich first rotates, then scales and at last translates
+##   
+##   var m:TMatrix3d=rotate(PI,vector3d(1,1,2.5)) & scale(2.0) & move(100.0,200.0,300.0)
+##   
+##   # Create a 3d point at (100,150,200) and a vector (5,2,3)
+##   
+##   var pt:TPoint3d=point3d(100.0,150.0,200.0) 
+##   
+##   var vec:TVector3d=vector3d(5.0,2.0,3.0)
+##   
+##   
+##   pt &= m # transforms pt in place
+##   
+##   var pt2:TPoint3d=pt & m #concatenates pt with m and returns a new point
+##   
+##   var vec2:TVector3d=vec & m #concatenates vec with m and returns a new vector            
+
+
 
 type 
-  TMatrix3d=object
+  TMatrix3d* =object
     ## Implements a row major 3d matrix, which means
     ## transformations are applied the order they are concatenated.
     ## This matrix is stored as an 4x4 matrix:
@@ -96,26 +124,6 @@ template makeBinOpAssignVector(s:expr)=
 
 
 # ***************************************
-#     TPoint3d implementation
-# ***************************************
-proc Point3d*(x,y,z:float):TPoint3d=
-  result.x=x
-  result.y=y
-  result.z=z
-  
-proc `&`*(p:TPoint3d,m:TMatrix3d):TPoint3d=
-  let
-    newx=m.cx*p.z+m.bx*p.y+m.ax*p.x+m.tx
-    newy=m.cy*p.z+m.by*p.y+m.ay*p.x+m.ty
-  result.z=m.cz*p.z+m.bz*p.y+m.az*p.x+m.tz
-  result.y=newy
-  result.x=newx
-
-proc `$`*(p:TPoint3d):string=
-  return rtos(p.x) & "," & rtos(p.y) & "," & rtos(p.z)
-  
-
-# ***************************************
 #     TMatrix3d implementation
 # ***************************************
 
@@ -142,6 +150,7 @@ proc matrix3d*(ax,ay,az,aw,bx,by,bz,bw,cx,cy,cz,cw,tx,ty,tz,tw:float):TMatrix3d 
   result.setElements(ax,ay,az,aw,bx,by,bz,bw,cx,cy,cz,cw,tx,ty,tz,tw)
 
 proc `&`*(a,b:TMatrix3d):TMatrix3d {.noinit.} =
+  ## Concatenates matrices returning a new matrix.
   result.setElements(
     a.aw*b.tx+a.az*b.cx+a.ay*b.bx+a.ax*b.ax,
     a.aw*b.ty+a.az*b.cy+a.ay*b.by+a.ax*b.ay,
@@ -193,7 +202,10 @@ proc move*(v:TVector3d):TMatrix3d {.noInit.} =
   result.setElements(1,0,0,0, 0,1,0,0, 0,0,1,0, v.x,v.y,v.z,1)
 
 
-proc rotate*(axis:TVector3d,angle:float):TMatrix3d {.noInit.}=
+proc rotate*(angle:float,axis:TVector3d):TMatrix3d {.noInit.}=
+  ## Creates a rotation matrix that rotates `angle` radians over
+  ## `axis`, which passes through origo.
+
   # see PDF document http://inside.mines.edu/~gmurray/ArbitraryAxisRotation/ArbitraryAxisRotation.pdf
   # for how this is computed
 
@@ -221,8 +233,10 @@ proc rotate*(axis:TVector3d,angle:float):TMatrix3d {.noInit.}=
     uwomc+vsi, vwomc-usi, w2+(1.0-w2)*cs, 0.0,
     0.0,0.0,0.0,1.0)
 
-proc rotate*(axis:TVector3d,org:TPoint3d,angle:float):TMatrix3d {.noInit.}=
-  
+proc rotate*(angle:float,axis:TVector3d,org:TPoint3d):TMatrix3d {.noInit.}=
+  ## Creates a rotation matrix that rotates `angle` radians over
+  ## `axis`, which passes through `org`.
+
   # see PDF document http://inside.mines.edu/~gmurray/ArbitraryAxisRotation/ArbitraryAxisRotation.pdf
   # for how this is computed
   
@@ -300,7 +314,7 @@ proc isUniform*(m:TMatrix3d,tol=1.0e-6):bool=
   ## perpendicular axes of equal lenght, which means (for example)
   ## it cannot transform a sphere into an ellipsoid.
   ## `tol` is used as tolerance for both equal length comparison 
-  ## and perp. comparison.
+  ## and perpendicular comparison.
   
   #dot product=0 means perpendicular coord. system, check xaxis vs yaxis and  xaxis vs zaxis
   if abs(m.ax*m.bx+m.ay*m.by+m.az*m.bz)<=tol and abs(m.ax*m.cx+m.ay*m.cy+m.az*m.cz)<=tol:
@@ -316,6 +330,8 @@ proc isUniform*(m:TMatrix3d,tol=1.0e-6):bool=
 
     
 proc mirror*(planeperp:TVector3d):TMatrix3d {.noInit.}=
+  ## Creates a matrix that mirrors over the plane that has `planeperp` as normal,
+  ## and passes through origo. `planeperp` does not need to be normalized.
   
   # https://en.wikipedia.org/wiki/Transformation_matrix
   var n=planeperp
@@ -338,6 +354,9 @@ proc mirror*(planeperp:TVector3d):TMatrix3d {.noInit.}=
 
 
 proc mirror*(planeperp:TVector3d,org:TPoint3d):TMatrix3d {.noInit.}=
+  ## Creates a matrix that mirrors over the plane that has `planeperp` as normal,
+  ## and passes through `org`. `planeperp` does not need to be normalized.
+
   # constructs a mirror M like the simpler mirror matrix constructor
   # above but premultiplies with the inverse traslation of org
   # and postmultiplies with the translation of org.
@@ -479,11 +498,28 @@ proc getZAxis*(m:TMatrix3d):TVector3d {.noInit.}=
 
     
 proc `$`*(m:TMatrix3d):string=
+  ## String representation of `m`
   return rtos(m.ax) & "," & rtos(m.ay) & "," &rtos(m.az) & "," & rtos(m.aw) &
     "\n" & rtos(m.bx) & "," & rtos(m.by) & "," &rtos(m.bz) & "," & rtos(m.bw) &
     "\n" & rtos(m.cx) & "," & rtos(m.cy) & "," &rtos(m.cz) & "," & rtos(m.cw) &
     "\n" & rtos(m.tx) & "," & rtos(m.ty) & "," &rtos(m.tz) & "," & rtos(m.tw)
     
+proc apply*(m:TMatrix3d, x,y,z:var float, translate=false)=
+  ## Applies transformation `m` onto `x`,`y`,`z`, optionally
+  ## using the translation part of the matrix.
+  let 
+    oldx=x
+    oldy=y
+    oldz=z
+    
+  x=m.cx*oldz+m.bx*oldy+m.ax*oldx
+  y=m.cy*oldz+m.by*oldy+m.ay*oldx
+  z=m.cz*oldz+m.bz*oldy+m.az*oldx
+    
+  if translate:
+    x+=m.tx
+    y+=m.ty
+    z+=m.tz
 
 # ***************************************
 #     TVector3d implementation
@@ -494,7 +530,7 @@ proc Vector3d*(x,y,z:float):TVector3d=
   result.z=z
 
 proc len*(v:TVector3d):float=
-  ## Returns the length of the vector.
+  ## Returns the length of the vector `v`.
   sqrt(v.x*v.x+v.y*v.y+v.z*v.z)
 
 proc `len=`*(v:var TVector3d,newlen:float) {.noInit.} =
@@ -623,7 +659,10 @@ proc normalize*(v:var TVector3d) {.inline.}=
   if not tryNormalize(v):
     raise newException(EDivByZero,"Cannot normalize zero length vector")
 
-proc rotate(vec:var TVector3d,axis:TVector3d,angle:float)=
+proc rotate*(vec:var TVector3d,angle:float,axis:TVector3d)=
+  ## Rotates `vec` in place, with `angle` radians over `axis`, which passes 
+  ## through origo.
+
   # see PDF document http://inside.mines.edu/~gmurray/ArbitraryAxisRotation/ArbitraryAxisRotation.pdf
   # for how this is computed
   
@@ -647,26 +686,28 @@ proc rotate(vec:var TVector3d,axis:TVector3d,angle:float)=
   vec.y=v*uxyzomc+y*cs+(w*x-u*z)*si
   vec.z=w*uxyzomc+z*cs+(u*y-v*x)*si
   
-proc scale(v:var TVector3d,s:float)=
+proc scale*(v:var TVector3d,s:float)=
+  ## Scales the vector in place with factor `s`
   v.x*=s
   v.y*=s
   v.z*=s
 
-proc stretch(v:var TVector3d,sx,sy,sz:float)=
+proc stretch*(v:var TVector3d,sx,sy,sz:float)=
+  ## Scales the vector non uniformly with factors `sx`,`sy`,`sz`
   v.x*=sx
   v.y*=sy
   v.z*=sz
 
-proc mirror(v:var TVector3d,planeperp:TVector3d)=
+proc mirror*(v:var TVector3d,planeperp:TVector3d)=
   ## Computes the mirrored vector of `v` over the plane
   ## that has `planeperp` as normal direction. This is the
   ## same as reflecting the vector `v` on the plane.
+  ## `planeperp` does not need to be normalized.
   
   var n=planeperp
   n.normalize
   
   let
-    mag=planeperp.len
     x=v.x
     y=v.y
     z=v.z
@@ -697,7 +738,6 @@ makeBinOpAssignVector(`+=`)
 makeBinOpAssignVector(`-=`)
 makeBinOpAssignVector(`*=`)
 makeBinOpAssignVector(`/=`)
-
 
 proc dot*(v1,v2:TVector3d):float {.inline.}=
   ## Computes the dot product of two vectors. 
@@ -732,16 +772,11 @@ proc angleTo*(v1,v2:TVector3d):float=
     return 0.0 # zero length vector has zero angle to any other vector
   return safeArccos(dot(nv1,nv2))
 
-
-
-# ***************************************
-#     Misc. 3d utilities
-# ***************************************
 proc arbitraryAxis*(norm:TVector3d):TMatrix3d {.noInit.}=
   ## Computes the rotation matrix that would transform
   ## world z vector into `norm`. The inverse of this matrix
   ## is useful to tranform a planar 3d object to 2d space.
-  ## This is the same algorithm used to interpret DXF files.
+  ## This is the same algorithm used to interpret DXF and DWG files.
   const lim=1.0/64.0
   var ax,ay,az:TVector3d
   if abs(norm.x)<lim and abs(norm.y)<lim:
@@ -760,49 +795,231 @@ proc arbitraryAxis*(norm:TVector3d):TMatrix3d {.noInit.}=
     az.x,az.y,az.z,0.0,
     0.0,0.0,0.0,1.0)
 
+proc bisect*(v1,v2:TVector3d):TVector3d {.noInit.}=
+  ## Computes the bisector between v1 and v2 as a normalized vector
+  ## If one of the input vectors has zero length, a normalized verison
+  ## of the other is returned. If both input vectors has zero length, 
+  ## an arbitrary normalized vector is returned.
+  var
+    vmag1=v1.len
+    vmag2=v2.len
+    
+  # zero length vector equals arbitrary vector, just change to magnitude to one to
+  # avoid zero division
+  if vmag1==0.0: 
+    if vmag2==0: #both are zero length return any normalized vector
+      return XAXIS
+    vmag1=1.0
+  if vmag2==0.0: vmag2=1.0    
+    
+  let
+    x1=v1.x/vmag1
+    y1=v1.y/vmag1
+    z1=v1.z/vmag1
+    x2=v2.x/vmag2
+    y2=v2.y/vmag2
+    z2=v2.z/vmag2
+    
+  result.x=(x1 + x2) * 0.5
+  result.y=(y1 + y2) * 0.5
+  result.z=(z1 + z2) * 0.5
+  
+  if not result.tryNormalize():
+    # This can happen if vectors are colinear. In this special case
+    # there are actually inifinitely many bisectors, we select just 
+    # one of them.
+    result=v1.cross(XAXIS)
+    if result.sqrlen<1.0e-9:
+      result=v1.cross(YAXIS)
+      if result.sqrlen<1.0e-9:
+        result=v1.cross(ZAXIS) # now we should be guaranteed to have succeeded
+    result.normalize
 
 
-if isMainModule:
+
+# ***************************************
+#     TPoint3d implementation
+# ***************************************
+proc Point3d*(x,y,z:float):TPoint3d=
+  result.x=x
+  result.y=y
+  result.z=z
+ 
+proc sqrDist*(a,b:TPoint3d):float=
+  ## Computes the squared distance between `a`and `b`
+  let dx=b.x-a.x
+  let dy=b.y-a.y
+  let dz=b.z-a.z
+  result=dx*dx+dy*dy+dz*dz
+  
+proc dist*(a,b:TPoint3d):float {.inline.}=
+  ## Computes the absolute distance between `a`and `b`
+  result=sqrt(sqrDist(a,b))
+
+proc `$` *(p:TPoint3d):string=
+  ## String representation of `p`
+  result=rtos(p.x)
+  result.add(",")
+  result.add(rtos(p.y))
+  result.add(",")
+  result.add(rtos(p.z))
+  
+proc `&`*(p:TPoint3d,m:TMatrix3d):TPoint3d=
+  ## Concatenates a point `p` with a transform `m`,
+  ## resulting in a new, transformed point.
+  result.z=m.cz*p.z+m.bz*p.y+m.az*p.x+m.tz
+  result.y=m.cy*p.z+m.by*p.y+m.ay*p.x+m.ty
+  result.x=m.cx*p.z+m.bx*p.y+m.ax*p.x+m.tx
+
+proc `&=` *(p:var TPoint3d,m:TMatrix3d)=
+  ## Applies transformation `m` onto `p` in place.
+  let
+    x=p.x
+    y=p.y
+    z=p.z
+  p.x=m.cx*z+m.bx*y+m.ax*x+m.tx
+  p.y=m.cy*z+m.by*y+m.ay*x+m.ty
+  p.z=m.cz*z+m.bz*y+m.az*x+m.tz
+    
+proc transformInv*(p:var TPoint3d,m:TMatrix3d)=
+  ## Applies the inverse of transformation `m` onto `p` in place.
+  ## If the matrix is not invertable (determinant=0) , EDivByZero will
+  ## be raised.
+  
+  # can possibly be more optimized in the future so use this function when possible
+  p&=inverse(m)
 
 
-  proc reflect(v:var TVector3d,nr:TVector3d)=
-    var n=nr
-    n.normalize
-    v=v - n * 2.0 * dot(n,v)
+proc `+`*(p:TPoint3d,v:TVector3d):TPoint3d {.noInit,inline.} =
+  ## Adds a vector `v` to a point `p`, resulting 
+  ## in a new point.
+  result.x=p.x+v.x
+  result.y=p.y+v.y
+  result.z=p.z+v.z
+
+proc `+=`*(p:var TPoint3d,v:TVector3d) {.noInit,inline.} =
+  ## Adds a vector `v` to a point `p` in place.
+  p.x+=v.x
+  p.y+=v.y
+  p.z+=v.z
+
+proc `-`*(p:TPoint3d,v:TVector3d):TPoint3d {.noInit,inline.} =
+  ## Subtracts a vector `v` from a point `p`, resulting 
+  ## in a new point.
+  result.x=p.x-v.x
+  result.y=p.y-v.y
+  result.z=p.z-v.z
+
+proc `-`*(p1,p2:TPoint3d):TVector3d {.noInit,inline.} =
+  ## Subtracts `p2`from `p1` resulting in a difference vector.
+  result.x=p1.x-p2.x
+  result.y=p1.y-p2.y
+  result.z=p1.z-p2.z
+
+proc `-=`*(p:var TPoint3d,v:TVector3d) {.noInit,inline.} =
+  ## Subtracts a vector `v` from a point `p` in place.
+  p.x-=v.x
+  p.y-=v.y
+  p.z-=v.z  
+
+proc equals(p1,p2:TPoint3d,tol=1.0e-6):bool {.inline.}=
+  ## Checks if two points approximately equals with a tolerance.
+  return abs(p2.x-p1.x)<=tol and abs(p2.y-p1.y)<=tol and abs(p2.z-p1.z)<=tol
+
+proc `=~`*(p1,p2:TPoint3d):bool {.inline.}=
+  ## Checks if two vectors approximately equals with a 
+  ## hardcoded tolerance 1e-6
+  equals(p1,p2)
+
+proc rotate*(p:var TPoint3d,rad:float,axis:TVector3d)=
+  ## Rotates point `p` in place `rad` radians about an axis 
+  ## passing through origo.
   
-  var n1=XAXIS
-  var n2=vector3d(1,0,0)
+  var v=vector3d(p.x,p.y,p.z)
+  v.rotate(rad,axis) # reuse this code here since doing the same thing and quite complicated
+  p.x=v.x
+  p.y=v.y
+  p.z=v.z
+    
+proc rotate*(p:var TPoint3d,angle:float,axis:TVector3d,org:TPoint3d)=
+  ## Rotates point `p` in place `rad` radians about an axis 
+  ## passing through `org`
   
-  echo n2
+  # see PDF document http://inside.mines.edu/~gmurray/ArbitraryAxisRotation/ArbitraryAxisRotation.pdf
+  # for how this is computed
   
-  #n2.mirror(n1)
+  var normax=axis
+  normax.normalize
   
-  echo "start"
-  discard readline(stdin)
-  var t1=cputime()
-  for a in 0..1000000000:
-    n2.reflect(n1)
-  echo rtos(cputime()-t1)
+  let
+    cs=cos(angle)
+    omc=1.0-cs
+    si=sin(angle)
+    u=normax.x
+    v=normax.y
+    w=normax.z
+    a=org.x
+    b=org.y
+    c=org.z
+    x=p.x
+    y=p.y
+    z=p.z
+    uu=u*u
+    vv=v*v
+    ww=w*w
+    ux=u*p.x
+    vy=v*p.y
+    wz=w*p.z
+    au=a*u
+    bv=b*v
+    cw=c*w
+    uxmvymwz=ux-vy-wz
+    
+  p.x=(a*(vv+ww)-u*(bv+cw-uxmvymwz))*omc + x*cs + (b*w+v*z-c*v-w*y)*si
+  p.y=(b*(uu+ww)-v*(au+cw-uxmvymwz))*omc + y*cs + (c*u-a*w+w*x-u*z)*si
+  p.z=(c*(uu+vv)-w*(au+bv-uxmvymwz))*omc + z*cs + (a*v+u*y-b*u-v*x)*si
   
-  #n2&=mirror(n1)
+proc scale*(p:var TPoint3d,fac:float) {.inline.}=
+  ## Scales a point in place `fac` times with world origo as origin.
+  p.x*=fac
+  p.y*=fac
+  p.z*=fac
   
-  echo "start"
-  discard readline(stdin)
-  var t2=cputime()
-  for a in 0..1000000000:
-    n2.mirror(n1)
-  echo rtos(cputime()-t2)
-  discard readline(stdin)
+proc scale*(p:var TPoint3d,fac:float,org:TPoint3d){.inline.}=
+  ## Scales the point in place `fac` times with `org` as origin.
+  p.x=(p.x - org.x) * fac + org.x
+  p.y=(p.x - org.y) * fac + org.y
+  p.z=(p.z - org.z) * fac + org.z
+
+proc stretch*(p:var TPoint3d,facx,facy,facz:float){.inline.}=
+  ## Scales a point in place non uniformly `facx` and `facy` times with world origo as origin.
+  p.x*=facx
+  p.y*=facy
+  p.z*=facz
+
+proc stretch*(p:var TPoint3d,facx,facy,facz:float,org:TPoint3d){.inline.}=
+  ## Scales the point in place non uniformly `facx` and `facy` times with `org` as origin.
+  p.x=(p.x - org.x) * facx + org.x
+  p.y=(p.y - org.y) * facy + org.y
+  p.z=(p.z - org.z) * facz + org.z
   
+
+proc move*(p:var TPoint3d,dx,dy,dz:float){.inline.}=
+  ## Translates a point `dx`,`dy`,`dz` in place.
+  p.x+=dx
+  p.y+=dy
+  p.z+=dz
+
+proc move*(p:var TPoint3d,v:TVector3d){.inline.}=
+  ## Translates a point with vector `v` in place.
+  p.x+=v.x
+  p.y+=v.y
+  p.z+=v.z
+
+proc area*(a,b,c:TPoint3d):float {.inline.}=
+  ## Computes the area of the triangle thru points `a`,`b` and `c`
   
-  
-  echo n2
-  
-  
-  
-  
-  
-  
-  discard readline(stdin)
-  
-  
+  # The area of a planar 3d quadliteral is the magnitude of the cross
+  # product of two edge vectors. Taking this time 0.5 gives the triangle area.
+  return cross(b-a,c-a).len*0.5
+

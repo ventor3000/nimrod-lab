@@ -55,7 +55,7 @@ proc drawScaledCircle(center:TPoint2d,rad:float,scale:float)=
 
   var norm=vector2d(cos(PI*0.25),sin(PI*0.25))
   
-  norm.xformNorm(stretch(1.0,scale))
+  norm.transformNorm(stretch(1.0,scale))
   var normpt=point2d(center.x+cos(PI*0.25)*rad,center.y+sin(PI*0.25)*rad*scale)
   
   drawVector(normpt,norm)

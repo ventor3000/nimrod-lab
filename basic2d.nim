@@ -739,17 +739,17 @@ proc scale*(p:var TPoint2d,fac:float) {.inline.}=
 proc scale*(p:var TPoint2d,fac:float,org:TPoint2d){.inline.}=
   ## Scales the point in place `fac` times with `org` as origin.
   p.x=(p.x - org.x) * fac + org.x
-  p.y=(p.x - org.y) * fac + org.y
+  p.y=(p.y - org.y) * fac + org.y
 
 proc stretch*(p:var TPoint2d,facx,facy:float){.inline.}=
   ## Scales a point in place non uniformly `facx` and `facy` times with world origo as origin.
   p.x*=facx
-  p.y*=facx
+  p.y*=facy
 
 proc stretch*(p:var TPoint2d,facx,facy:float,org:TPoint2d){.inline.}=
   ## Scales the point in place non uniformly `facx` and `facy` times with `org` as origin.
   p.x=(p.x - org.x) * facx + org.x
-  p.y=(p.x - org.y) * facy + org.y
+  p.y=(p.y - org.y) * facy + org.y
 
 proc move*(p:var TPoint2d,dx,dy:float){.inline.}=
   ## Translates a point `dx`, `dy` in place.
