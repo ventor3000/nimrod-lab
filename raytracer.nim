@@ -9,10 +9,9 @@ const
   width  = 640 #1280
   height = 480 #720
   fov    = 45.0
-  max_depth = 6 
+  max_depth = 1 
   
 type
-  #TVec3 = array[3,float]
   TRay {.pure, final.} = object
     start: TPoint3d
     dir: TVector3d
@@ -51,6 +50,13 @@ proc newLight(position:TPoint3d, color: TVector3d): ref TLight =
   result.position = position
   result.color = color
     
+
+# ************Abstract TraceObject impl.************  
+method intersect(me:PTraceObject,ray:TRay,distance:var float):Bool=quit("Intersection not implemented for this")
+method isIntersecting(me: PTraceObject, ray: TRay) : Bool = quit("isIntersecting not implemented for this object")
+method getNormal(me: PTraceObject, v: TPoint3d): TVector3d {.noInit.} = quit("getNormal not implemented fo this object")
+
+# ************Sphere impl.************
 proc newSphere(center: TPoint3d, radius: Float, color: TVector3d, reflection: Float = 0.0, transparency: Float = 0.0): PSphere =
   new(result)
   result.center = center
@@ -59,34 +65,10 @@ proc newSphere(center: TPoint3d, radius: Float, color: TVector3d, reflection: Fl
   result.reflection = reflection
   result.transparency = transparency
   
-  
-proc newTorus(center:TPoint3d,rmajor,rminor:float,color: TVector3d, reflection: Float = 0.0, transparency: Float = 0.0) : PTorus =
-  new(result)
-  result.color = color
-  result.reflection = reflection
-  result.transparency = transparency
-  
-  let scale=1.0/rmajor
-  
-  result.minorradius=rminor*scale
-  result.matrix= scale(rmajor) & move(center.x,center.y,center.z)
-  result.invmat=result.matrix.inverse
-  
-method intersect(me:PTraceObject,ray:TRay,distance:var float):bool=
-  quit("Intersection not implemented")
-
-method isIntersecting(me: PTraceObject, ray: TRay) : Bool = 
-  quit("isIntersecting not implemented")
-
-method getNormal(me: PTraceObject, v: TPoint3d): TVector3d {.noInit.} = 
-  quit("getNormal not implemented")
-
-
-  
-
 method getNormal(me: PSphere, v: TPoint3d): TVector3d {.noInit.} = 
   result=v-me.center
   normalize(result)
+
 
 template intersectImpl(me: ref TSphere, ray: expr) : expr {.immediate, dirty.} = 
 
@@ -111,8 +93,21 @@ method intersect(me: PSphere, ray: TRay, distance: var Float) : Bool  =
   var far  = a + c
   distance = if (near < 0) : far else : near
   return true
+
+# ************Torus impl.************
+proc newTorus(pos:TMatrix3d,rmajor,rminor:float,color: TVector3d, reflection: Float = 0.0, transparency: Float = 0.0) : PTorus =
+  new(result)
+  result.color = color
+  result.reflection = reflection
+  result.transparency = transparency
   
-method intersect(me:PTorus,ray:TRay,distance:var float):bool=
+  let scale=1.0/rmajor
+  
+  result.minorradius=rminor*scale
+  result.matrix = scale(rmajor) & pos
+  result.invmat=result.matrix.inverse
+  
+method intersectOld(me:PTorus,ray:TRay,distance:var float):bool=
 
   var
     eye=ray.start
@@ -139,17 +134,6 @@ method intersect(me:PTorus,ray:TRay,distance:var float):bool=
     dy2=dy*dy
     dz2=dz*dz
     rmin2=rmin*rmin
-    
-    
-    #t0=(4*y02+4*x02-1)*rmaj4+(-2*z02-2*y02-2*x02+2*rmin2)*rmaj2-z04+(-2*y02-2*x02+2*rmin2)*z02-y04+
-    #  (2*rmin2-2*x02)*y02-x04+2*rmin2*x02-rmin2*rmin2
-    #t1=(8*dy*y0+8*dx*x0)*rmaj4+(-4*dz*z0-4*dy*y0-4*dx*x0)*rmaj2-4*dz*z02*z0+(-4*dy*y0-4*dx*x0)*z02+(-4*dz*y02-
-    #  4*dz*x02+4*dz*rmin2)*z0-4*dy*y02*y0-4*dx*x0*y02+(4*dy*rmin2-4*dy*x02)*y0-4*dx*x02*x0+4*dx*rmin2*x0
-    #t2=(4*dy2+4*dx2)*rmaj4+(-2*dz2-2*dy2-2*dx2)*rmaj2+(-6*dz2-2*dy2-2*dx2)*z02+(-8*dy*dz*y0-8*dx*dz*x0)*z0+
-    #  (-2*dz2-6*dy2-2*dx2)*y02-8*dx*dy*x0*y0+(-2*dz2-2*dy2-6*dx2)*x02+(2*dz2+2*dy2+2*dx2)*rmin2
-    #t3=((-4*dy2-4*dx2)*dz-4*dz2*dz)*z0+(-4*dy*dz2-4*dy2*dy-4*dx2*dy)*y0+(-4*dx*dz2-4*dx*dy2-4*dx2*dx)*x0
-    #t4= -dz2*dz2+(-2*dy2-2*dx2)*dz2-dy2*dy2-2*dx2*dy2-dx2*dx2
-    
     t1= -4*dz*z02*z0+(-4*dy*y0-4*dx*x0)*z02+(-4*dz*y02-4*dz*x02+4*dz*rmin2-4*dz)*z0-4*dy*y02*y0-4*dx*x0*y02+(-4*dy*x02+4*dy*rmin2+4*dy)*
       y0-4*dx*x02*x0+(4*dx*rmin2+4*dx)*x0
     t2=(-6*dz2-2*dy2-2*dx2)*z02+(-8*dy*dz*y0-8*dx*dz*x0)*z0+(-2*dz2-6*dy2-2*dx2)*y02-8*dx*dy*x0*y0+
@@ -169,12 +153,103 @@ method intersect(me:PTorus,ray:TRay,distance:var float):bool=
       result=true
       distance=t
   
-method getNormal(me: PTorus, v: TPoint3d): TVector3d {.noInit.} = 
-  return zaxis
+  
+method intersect(me:PTorus,ray:TRay,distance:var float):bool=
+
+  
+  var
+    eye=ray.start
+    dir=ray.dir
+    
+  eye= eye & me.invmat
+  dir= dir & me.invmat
+
+  let
+    dx=eye.x
+    dy=eye.y
+    dz=eye.z
+    ex=dir.x
+    ey=dir.y
+    ez=dir.z
+    r=me.minorradius
+    G=4*(ex*ex+ey*ey)
+    H=8*(dx*ex+dy*ey)
+    I=4*(dx*dx+dy*dy)
+    J=ex*ex+ey*ey+ez*ez
+    K=2*(dx*ex+dy*ey+dz*ez)
+    L=dx*dx+dy*dy+dz*dz+1-r*r
+    x4=J*J
+    x3=2*J*K
+    x2=2*J*L+K*K-G
+    x1=2*K*L-H
+    x0=L*L-I
+    ply=initPoly(x4,x3,x2,x1,x0)
+  
+  
+  
+  
+  var ts=ply.roots()
+    
+  
+  
+    
+  result=false
+  distance=1.0e300
+  for t in ts:
+    
+    if t>0.0 and t<distance:
+      result=true
+      distance=t   
+  
+  
+    
+   
+    
+    
+  
+method getNormal(me: PTorus, pt: TPoint3d): TVector3d {.noInit.} = 
+  #let r=me.minorradius
+  
+  when false:
+    var
+      ploc=p
+    
+    ploc&=me.invmat
+    let 
+      x=ploc.x
+      y=ploc.y
+      z=ploc.z
+      r=me.minorRadius
+    
+    result.x=x*z*z+x*y*y+x*x*x-r*r*x-x
+    result.y=y*z*z+y*y*y+x*x*y-r*r*y-y
+    result.z=z*z*z+y*y*z+x*x*z-r*r*z+z
+    
+    result.transformNorm(me.invmat)
+    result.normalize
+  
+  
+  var
+    p=pt
+  p&=me.invmat
+  
+  let
+    srt=1.0/(p.x*p.x+p.y*p.y)
+    clp=point3d(p.x*srt,p.y*srt,0.0)
+  
+  result=clp-p
+  result.transformNorm(me.invmat)
+  result.normalize()
+    
+  
 
 method isIntersecting(me: PTorus, ray: TRay) : Bool = 
   var f:float
   return intersect(me,ray,f)
+
+
+
+
   
 
 proc trace(ray: TRay, scene: TScene, depth: int): TVector3d =
@@ -191,6 +266,11 @@ proc trace(ray: TRay, scene: TScene, depth: int): TVector3d =
 
   if obj.isNil : return #newVec3(0)
 
+  #let ambient=0.5
+  #result.x=obj.color.x*ambient
+  #result.y=obj.color.y*ambient
+  #result.z=obj.color.z*ambient
+  
   var point_of_hit = ray.start+ray.dir * nearest
   #point_of_hit += ray.start 
   var normal = obj.getNormal(point_of_hit)
@@ -202,9 +282,7 @@ proc trace(ray: TRay, scene: TScene, depth: int): TVector3d =
     normal = -normal
     dot_normal_ray = -dot_normal_ray
 
-  #result = newVec3(0.0)
   var reflection_ratio = obj.reflection
-
   let normE5 = normal * 1.0e-5
   for lgt in scene.lights :
     var light_direction=lgt.position - point_of_hit
@@ -284,7 +362,7 @@ proc render (scene: TScene, surface: PSurface) =
       let r = min(255, round(pixel.x * 255.0)).byte
       let g = min(255, round(pixel.y * 255.0)).byte
       let b = min(255, round(pixel.z * 255.0)).byte
-      #auto rgb = map!("cast(ubyte)min(255, a*255+0.5)")(pixel[]);
+
       row[] = MapRGB(surface.format, r, g, b)
       row = cast[ptr int32](cast[TAddress](row) + sizeof(int32))
   UnlockSurface(surface)
@@ -300,18 +378,12 @@ proc test() =
   var scene: TScene
   
   scene.objects= @[]
-  scene.objects.add(newSphere(point3d(0.0, -10002.0, -20.0), 10000.0, vector3d(0.8, 0.8, 0.8)))
-  scene.objects.add(newSphere(point3d(0.0, 2.0, -20.0), 4.0, vector3d(0.8, 0.5, 0.5), 0.5))
-  scene.objects.add(newSphere(point3d(5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.8, 0.8), 0.2))
-  scene.objects.add(newSphere(point3d(-5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.5, 0.8), 0.2))
-  scene.objects.add(newSphere(point3d(-2.0, -1.0, -10.0), 1.0, vector3d(0.1, 0.1, 0.1), 0.1, 0.8))
-  scene.objects.add(newTorus(point3d(0,10,-20),10.0,2.0,vector3d(1.0,0,0)))
-  
-  #scene.objects = @[newSphere(point3d(0.0, -10002.0, -20.0), 10000.0, vector3d(0.8, 0.8, 0.8)),
-  #         newSphere(point3d(0.0, 2.0, -20.0), 4.0, vector3d(0.8, 0.5, 0.5), 0.5),
-  #         newSphere(point3d(5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.8, 0.8), 0.2),
-  #         newSphere(point3d(-5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.5, 0.8), 0.2),
-  #         newSphere(point3d(-2.0, -1.0, -10.0), 1.0, vector3d(0.1, 0.1, 0.1), 0.1, 0.8)]
+  #scene.objects.add(newSphere(point3d(0.0, -10002.0, -20.0), 10000.0, vector3d(0.8, 0.8, 0.8)))
+  #scene.objects.add(newSphere(point3d(0.0, 2.0, -20.0), 4.0, vector3d(0.8, 0.5, 0.5), 0.5))
+  #scene.objects.add(newSphere(point3d(5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.8, 0.8), 0.2))
+  #scene.objects.add(newSphere(point3d(-5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.5, 0.8), 0.2))
+  #scene.objects.add(newSphere(point3d(-2.0, -1.0, -10.0), 1.0, vector3d(0.1, 0.1, 0.1), 0.1, 0.8))
+  scene.objects.add(newTorus(stretch(2.0,1.0,1.0) & rotateY(1.58) & move(2,2,-10),2.0,0.4,vector3d(0.5,0.0,0.0),0.1 ))
   scene.lights = @[newLight(point3d(-10.0, 20.0, 30.0), vector3d(2.0, 2.0, 2.0)) ]
   render(scene, screen)
 
@@ -321,17 +393,8 @@ when isMainModule :
   #  bench("duration"):
   test()
   
-  var torus=newTorus(point3d(0,10,-20),10.0,2.0,vector3d(1.0,0,0))
-  
 
-  
-  #echo FormatFloat(torus.minorradius,ffDefault,0)
-  
-  
-  var dist:float
-  
-  echo intersect(torus,newRay(point3d(0,0,0),vector3d(0,0,-10)),dist)
-  echo FormatFloat(dist,ffDefault,0)
+  echo("done!")
   
   
   discard stdin.readline
