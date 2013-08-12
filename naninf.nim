@@ -28,7 +28,7 @@ template test(x:TReal):float=
   
   
   
-test(6.78)
+
 
 
 echo Float64.maxValue
@@ -39,5 +39,5 @@ echo FormatFloat(Float64.MaxValue,ffDefault,0)
 
 var f=9.8
 
-
+echo sizeof(float)
 discard readline(stdin)
