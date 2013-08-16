@@ -28,16 +28,33 @@ template test(x:TReal):float=
   
   
   
+proc sin32(x: float32): float {.importc: "sinf", header: "<math.h>".}
+proc sin64(x: float64): float {.importc: "sin", header: "<math.h>".}
+proc xsin[T:TReal](x: T): T {.noInit.} =
+  when sizeof(x)==4: sin32(x.float32)
+  elif sizeof(x)==8: sin64(x.float64)
+  else: {.error "Non supported floating point width".}
+  
+    
+proc RealSize[T:TReal](x:T):int {.noInit.}=
+    when sizeof(x)==4:
+      return 32
+    elif sizeof(x)==8:
+      return 64
+    else:
+      return 0
+      
 
 
+var a=0.0
+echo "start"
+while a <6.28:
+  var b=xsin(a)
+  a+=0.000001
+echo "end"
 
-echo Float64.maxValue
+  
+echo xsin(3.0'f32)
 
+discard stdin.readline
 
-echo FormatFloat(Float64.MinValue,ffDefault,0)
-echo FormatFloat(Float64.MaxValue,ffDefault,0)
-
-var f=9.8
-
-echo sizeof(float)
-discard readline(stdin)
