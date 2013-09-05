@@ -11,7 +11,7 @@ const
   width  = 1280
   height = 720
   fov    = 45.0
-  max_depth = 6
+  max_depth = 1
   
 type
   TRay {.pure, final.} = object
@@ -251,14 +251,7 @@ proc trace(ray: TRay, scene: TScene, depth: int): TVector3d =
       blocked = it.isIntersecting(r)
       if blocked:
         break
-    #for it in 0..high(scene.objects):
-    #  blocked = scene.objects[it].isIntersecting(r)
-    #  if blocked:
-    #    if it!=0: #put shadow hit object first, because its most likely to hit first the next time
-    #      let tmp=scene.objects[it]
-    #      scene.objects[it]=scene.objects[0]
-    #      scene.objects[0]=tmp
-    #    break
+    
     
     if not blocked :
       var temp = lgt.color
@@ -344,11 +337,11 @@ proc test() =
   var scene: TScene
   
   scene.objects= @[]
-  scene.objects.add(newSphere(point3d(0.0, -10002.0, -20.0), 10000.0, vector3d(0.8, 0.8, 0.8)))
+  scene.objects.add(newSphere(point3d(0.0, -10002.0, -20.0), 10000.0, vector3d(0.2, 0.2, 0.2)))
   scene.objects.add(newSphere(point3d(0.0, 2.0, -20.0), 4.0, vector3d(0.8, 0.5, 0.5), 0.5))
   scene.objects.add(newSphere(point3d(5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.8, 0.8), 0.2))
   scene.objects.add(newSphere(point3d(-5.0, 0.0, -15.0), 2.0, vector3d(0.3, 0.5, 0.8), 0.2))
-  scene.objects.add(newSphere(point3d(-2.0, -1.0, -10.0), 1.0, vector3d(0.1, 0.1, 0.1), 0.1,0.8))
+  #scene.objects.add(newSphere(point3d(-2.0, -1.0, -10.0), 2.0, vector3d(0.1, 0.1, 0.1), 0.1,0.8))
   scene.objects.add(newTorus(rotateX(0.3) & rotateY(-0.8) & move(1.8,2.5,-10),1.0,0.4,vector3d(0.5,0.0,0.0),0.2 ))
   scene.objects.add(newTorus(rotateY(PI/4) & rotateZ(PI/4) & move(-4.2,3.5,-15),1.0,0.4,vector3d(0.0,0.2,0.0),0.1 ))
   
