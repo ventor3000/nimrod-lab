@@ -1,0 +1,35 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2012-06-01 08:24+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n == 1 ? 0 : 1;\n"
+
+#: 123
+msgid "Hello world"
+msgstr ""
+
+#: 69
+msgid "Bottle"
+msgid_plural "Bottles"
+msgstr[0] ""
+msgstr[1] ""
+
+#: 123
+msgid "Hello again  "
+msgstr ""
+
+#: 123
+msgid "Single quoted string without paren"
+msgstr ""
+
+#: 123
+msgid "Tripple quoted string without paren"
+msgstr ""
+
