@@ -65,16 +65,16 @@ elif defined(macosx):
     iup_mglplot_dll = "libiup_mglplot(3.8|3.0|).dylib"
 else: 
   const 
-    iup_dll = "libiup(3.8|3.0|).so.1"
-    iupcontrols_dll = "libiupcontrols(3.8|3.0|).so.1"
-    iup_pplot_dll = "libiup_pplot(3.8|3.0|).so.1"
-    iup_scintilla_dll = "libiup_scintilla(3.8|).so.1"
-    iupgl_dll="libiupgl(3.8|3.0|).so.1"
-    iupole_dll="libiupole(3.8|3.0|).so.1" #never exists, but must be defined
-    iupimglib_dll="libiupimglib(3.8|3.0|).so.1"
-    iupweb_dll="libiupweb(3.8|3.0|).so.1"
-    iuptuio_dll="libiuptuio(3.8|3.0|).so.1"
-    iup_mglplot_dll="libiup_mglplot(3.8|3.0|).so.1"
+    iup_dll = "libiup(3.8|3.0|).so"
+    iupcontrols_dll = "libiupcontrols(3.8|3.0|).so"
+    iup_pplot_dll = "libiup_pplot(3.8|3.0|).so"
+    iup_scintilla_dll = "libiup_scintilla(3.8|).so"
+    iupgl_dll="libiupgl(3.8|3.0|).so"
+    iupole_dll="libiupole(3.8|3.0|).so" #never exists, but must be defined
+    iupimglib_dll="libiupimglib(3.8|3.0|).so"
+    iupweb_dll="libiupweb(3.8|3.0|).so"
+    iuptuio_dll="libiuptuio(3.8|3.0|).so"
+    iup_mglplot_dll="libiup_mglplot(3.8|3.0|).so"
 
 
 # Fixed port from IUP3.0 RC2 (since functions from RC3 and forward missing) to IUP3.8 doing the following:
@@ -172,7 +172,7 @@ else:
 
 
 
-# Removed the following obsolete functions that are does nothing:
+# Removed the following obsolete functions that does nothing:
 #   ControlsClose
 #   OldValOpen
 #   OldTabsOpen
@@ -188,14 +188,50 @@ type
 
   Icallback* = proc (arg: PIhandle): cint {.cdecl.}
 
+  GetFileResult * = enum
+    gfCancel= -1,
+    gfExistingFile= 0,
+    gfNewFile= 1
+    
+    
+ 
 # pre-definided dialogs
 proc FileDlg*: PIhandle {.importc: "IupFileDlg", dynlib: iup_dll, cdecl.}
 proc MessageDlg*: PIhandle {.importc: "IupMessageDlg", dynlib: iup_dll, cdecl.}
 proc ColorDlg*: PIhandle {.importc: "IupColorDlg", dynlib: iup_dll, cdecl.}
 proc FontDlg*: PIhandle {.importc: "IupFontDlg", dynlib: iup_dll, cdecl.}
 
-proc GetFile*(arq: cstring): cint {.
-  importc: "IupGetFile", dynlib: iup_dll, cdecl.}
+
+proc stringToCharArray(str:string,arr:var openArray[char])=
+  
+  var index=0
+  for ch in str:
+    arr[index]=ch
+    inc index
+  
+  arr[index]='\0'
+    
+    
+  
+  
+  
+
+proc getFileInternal(filename: cstring): cint {.importc: "IupGetFile", dynlib: iup_dll, cdecl.}
+proc getFile* (filename: var string):GetFileResult =
+  ## Shows a modal dialog of the native interface system to select a filename. 
+  ## Uses the fileDlg element internally.
+  ## `filename`: This parameter is used as an input value to define the default filter and directory. 
+  ## Example: "../docs/*.txt". As an output value, it is used to contain the filename entered by the user.
+  ## Returns `gfNewFile`, `gfExistingFile` or `gfCancel` if canceled by user.
+  var buf {.noinit.}: array[0..2500, char]
+  
+  stringToCharArray(filename,buf)
+  
+  result=GetFileResult(getFileInternal(buf))
+  if(result>=gfExistingFile):
+    filename= $buf
+
+
 proc Message*(title, msg: cstring) {.
   importc: "IupMessage", dynlib: iup_dll, cdecl.}
 proc Messagef*(title, format: cstring) {.
